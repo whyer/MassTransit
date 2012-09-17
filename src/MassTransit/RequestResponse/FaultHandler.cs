@@ -1,4 +1,4 @@
-﻿// Copyright 2007-2012 Chris Patterson, Dru Sellers, Travis Smith, et. al.
+// Copyright 2007-2012 Chris Patterson, Dru Sellers, Travis Smith, et. al.
 //  
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use
 // this file except in compliance with the License. You may obtain a copy of the 
@@ -15,28 +15,28 @@ namespace MassTransit.RequestResponse
     using System;
     using System.Threading;
 
-    public class TimeoutHandler<TRequest>
+    public class FaultHandler<TRequest>
         where TRequest : class
     {
+        readonly Action<TRequest, Fault<TRequest>> _faultCallback;
         readonly SynchronizationContext _synchronizationContext;
-        readonly Action<TRequest> _timeoutCallback;
 
-        public TimeoutHandler(SynchronizationContext synchronizationSynchronizationContext,
-            Action<TRequest> timeoutCallback)
+        public FaultHandler(SynchronizationContext synchronizationSynchronizationContext,
+            Action<TRequest, Fault<TRequest>> faultCallback)
         {
-            _timeoutCallback = timeoutCallback;
+            _faultCallback = faultCallback;
             _synchronizationContext = synchronizationSynchronizationContext;
         }
 
-        public void HandleTimeout(TRequest request)
+        public void HandleFault(TRequest request, Fault<TRequest> fault)
         {
             if (_synchronizationContext != null)
             {
-                _synchronizationContext.Post(state => _timeoutCallback(request), state: null);
+                _synchronizationContext.Post(state => _faultCallback(request, fault), state: null);
             }
             else
             {
-                _timeoutCallback(request);
+                _faultCallback(request, fault);
             }
         }
     }
