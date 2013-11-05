@@ -126,7 +126,6 @@ namespace MassTransit.Transports.RabbitMq
         public void Dispose()
         {
             Dispose(true);
-            GC.SuppressFinalize(this);
         }
 
         public IEnumerable<Type> BindExchangesForPublisher(Type messageType, IMessageNameFormatter messageNameFormatter)
@@ -138,7 +137,10 @@ namespace MassTransit.Transports.RabbitMq
                 {
                     MessageName messageName = messageNameFormatter.GetMessageName(messageType);
 
-                    _publisher.ExchangeDeclare(messageName.ToString());
+                    bool temporary = !messageType.IsPublic;
+
+                    _publisher.ExchangeDeclare(messageName.ToString(), temporary);
+
                     messageTypes.Add(messageType);
 
                     foreach (Type type in messageType.GetMessageTypes().Skip(1))
@@ -153,12 +155,12 @@ namespace MassTransit.Transports.RabbitMq
             return messageTypes;
         }
 
-        public void BindSubscriberExchange(string exchangeName)
+        public void BindSubscriberExchange(IRabbitMqEndpointAddress address, string exchangeName)
         {
             AddPublisherBinding();
             _connectionHandler.Use(connection =>
                 {
-                    _publisher.ExchangeBind(_address.Name, exchangeName);
+                    _publisher.ExchangeBind(address.Name, exchangeName);
                 });
         }
 
@@ -186,7 +188,7 @@ namespace MassTransit.Transports.RabbitMq
             if (_publisher != null)
                 return;
 
-            _publisher = new RabbitMqPublisher();
+            _publisher = new RabbitMqPublisher(_address);
 
             _connectionHandler.AddBinding(_publisher);
         }
@@ -214,11 +216,6 @@ namespace MassTransit.Transports.RabbitMq
             }
 
             _disposed = true;
-        }
-
-        ~InboundRabbitMqTransport()
-        {
-            Dispose(false);
         }
     }
 }
